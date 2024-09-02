@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.35013.160
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SysTryApp", "SysTryApp\SysTryApp.csproj", "{BCC8DEAD-615D-48C0-9027-F7437B427CA1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BCC8DEAD-615D-48C0-9027-F7437B427CA1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BCC8DEAD-615D-48C0-9027-F7437B427CA1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BCC8DEAD-615D-48C0-9027-F7437B427CA1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BCC8DEAD-615D-48C0-9027-F7437B427CA1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {38BA4081-19EF-4CC3-975D-07878828BA58}
+	EndGlobalSection
+EndGlobal
