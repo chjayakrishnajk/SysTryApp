@@ -89,7 +89,7 @@ namespace SysTryApp
         {
             if(string.IsNullOrEmpty(command)) return;
             if (command.Split('!')[0] == "SERVER") return;
-            trayIcon.ShowBalloonTip(3000, "Received", $"Command: {command}", ToolTipIcon.Info);
+            //trayIcon.ShowBalloonTip(3000, "Received", $"Command: {command}", ToolTipIcon.Info);
             if (command == "getScreenshot")
             {
                 var screenshotBytes = GetScreenshot();
