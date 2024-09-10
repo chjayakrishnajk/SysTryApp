@@ -33,7 +33,7 @@ namespace SysTryApp
         private DateTime lastMouseMoveTime = DateTime.MinValue;
         private Thread mouseTrackingThread;
         private volatile bool isTracking;
-        private SharedMemoryCommunication sharedMemory;
+        private FileSystemWatcher watcher;
         public Form1()
         {
             //this.SuspendLayout();
@@ -55,18 +55,66 @@ namespace SysTryApp
             mouseTrackingThread = new Thread(new ThreadStart(TrackMousePosition));
             mouseTrackingThread.IsBackground = true; // Set as background thread so it doesn't block the app from closing
             mouseTrackingThread.Start();
-            sharedMemory = new SharedMemoryCommunication();
-            sharedMemory.Initialize("SharedMemory");
-            sharedMemory.OnMessageReceived += MessageReceived;
-            // Start listening for messages asynchronously
-            _ = sharedMemory.StartListeningAsync();
 
-            // Example: Sending a message to the client            
+            string directory = $"{Constants.FileWatcher}";  // Make sure this directory exists
+            watcher = new FileSystemWatcher();
+            watcher.Path = $"{Constants.FileWatcher}\\";
+            watcher.Filter = "ss.txt";
+            watcher.NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.LastAccess;
+
+            watcher.Created += OnChanged;
+            watcher.Changed += OnChanged;            
+            watcher.EnableRaisingEvents = true;
         }
-
-        private async void MessageReceived(object? sender, string e)
+        private void OnChanged(object source, FileSystemEventArgs e)
         {
-            await ProcessCommandAsync(e);
+            Thread.Sleep(200);
+            // Read the tx_id and create a file in the images folder
+            string txIdFile = File.ReadAllText(e.FullPath);
+            var screenshotBytes = GetScreenshot();
+            File.WriteAllBytes("screenshot.png", screenshotBytes);
+            string tvFramePath = "tvframe.png";
+            Bitmap tvFrame = new Bitmap(tvFramePath);
+
+            // Convert TV frame to a non-indexed format (e.g., 32bpp ARGB)
+            Bitmap tvFrameNonIndexed = new Bitmap(tvFrame.Width, tvFrame.Height, PixelFormat.Format32bppArgb);
+            using (Graphics g = Graphics.FromImage(tvFrameNonIndexed))
+            {
+                g.DrawImage(tvFrame, 0, 0);
+            }
+            Byte[] data;
+
+            // Load the screenshot from byte array
+            using (MemoryStream ms = new MemoryStream(screenshotBytes))
+            {
+                Bitmap screenshot = new Bitmap(ms);
+
+                // Define the TV screen area within the TV frame
+                Rectangle tvScreenArea = new Rectangle(x: 60, y: 30, width: 800, height: 455);
+
+                // Resize the screenshot to fit the TV screen area
+                Bitmap resizedScreenshot = new Bitmap(tvScreenArea.Width, tvScreenArea.Height);
+                using (Graphics g = Graphics.FromImage(resizedScreenshot))
+                {
+                    g.DrawImage(screenshot, 0, 0, tvScreenArea.Width, tvScreenArea.Height);
+                }
+
+                // Combine the resized screenshot with the TV frame
+                using (Graphics g = Graphics.FromImage(tvFrameNonIndexed))
+                {
+                    g.DrawImage(resizedScreenshot, tvScreenArea.X, tvScreenArea.Y);
+                }
+
+                // Save the final image
+
+                using (var memoryStream = new MemoryStream())
+                {
+                    tvFrameNonIndexed.Save(memoryStream, ImageFormat.Bmp);
+
+                    data = memoryStream.ToArray();
+                }
+                tvFrameNonIndexed.Save($"{Constants.FileWatcher}\\{txIdFile}.png", ImageFormat.Png);
+            }
         }
 
         private void InitializeSystemTray()
@@ -85,12 +133,12 @@ namespace SysTryApp
             trayIcon.DoubleClick += TrayIcon_DoubleClick;
         }       
 
-        private async Task ProcessCommandAsync(string command)
+        private async void ProcessCommandAsync(string command)
         {
             if(string.IsNullOrEmpty(command)) return;
-            if (command.Split('!')[0] == "SERVER") return;
+            if (command.Split('!')[0] == "SERVER") return;            
             //trayIcon.ShowBalloonTip(3000, "Received", $"Command: {command}", ToolTipIcon.Info);
-            if (command == "getScreenshot")
+            if (command.Split('!')[1] == "getScreenshot")
             {
                 var screenshotBytes = GetScreenshot();
                 File.WriteAllBytes("screenshot.png", screenshotBytes);
@@ -136,17 +184,16 @@ namespace SysTryApp
                     }
                 }
                 string base64Str = Convert.ToBase64String(data);
-                sharedMemory.Send(false, $"IMG!{base64Str}");
             }
-            else if(command == "getLastMouseMoved")
+            else if(command.Split('!')[1] == "getLastMouseMoved")
             {
-                sharedMemory.Send(false, "STR!mouse!" + lastMouseMoveTime.ToString("dd-MM-yyyy HH:mm:ss"));
+                //messageService.SendMessage("STR!mouse!" + lastMouseMoveTime.ToString("dd-MM-yyyy HH:mm:ss"));
             }
             else
             {
                 string output = await RunCommandAsync(command);
 
-                sharedMemory.Send(true, $"STR!command!{output}");
+                //messageService.SendMessage($"STR!command!{output}");
             }
         }
 
@@ -282,5 +329,9 @@ namespace SysTryApp
     {
         public string Password { get; set; }
         public Guid ConnectedWifiID { get; set; }
+    }
+    public class Constants
+    {
+        public static string FileWatcher { get; set; } = "D:\\Db\\";
     }
 }
