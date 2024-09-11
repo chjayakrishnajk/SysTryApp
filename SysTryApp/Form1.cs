@@ -19,6 +19,7 @@ namespace SysTryApp
     using static System.Runtime.InteropServices.JavaScript.JSType;
     using static System.Windows.Forms.Design.AxImporter;
     using static System.Net.Mime.MediaTypeNames;
+    using System.Timers;
 
     public partial class Form1 : Form
     {
@@ -34,6 +35,7 @@ namespace SysTryApp
         private Thread mouseTrackingThread;
         private volatile bool isTracking;
         private FileSystemWatcher watcher;
+        public System.Timers.Timer _timer;
         public Form1()
         {
             //this.SuspendLayout();
@@ -47,7 +49,7 @@ namespace SysTryApp
             this.ResumeLayout(false);
 
             this.FormClosing += SystemTrayApp_FormClosing;
-            string filePath = $@"D:\My Visual Studio Projects\WinBleService\BlazorApp\bin\Debug\net7.0\Files\litedb\litedb.db";
+            string filePath = $@"{Constants.DataPath}\Files\litedb\litedb.db";
             string connectionString = $"Filename=\"{filePath}\";Connection=\"shared\"";
             Database = new LiteDatabase(connectionString);
             InitializeSystemTray();
@@ -63,9 +65,30 @@ namespace SysTryApp
             watcher.NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.LastAccess;
 
             watcher.Created += OnChanged;
-            watcher.Changed += OnChanged;            
+            watcher.Changed += OnChanged;
             watcher.EnableRaisingEvents = true;
+            _timer = new System.Timers.Timer(6000); // 60,000 ms = 60 seconds
+            _timer.Elapsed += UpdateMouse;  // Event handler for the timer
+            _timer.AutoReset = true;  // Ensures the timer runs repeatedly
+            _timer.Enabled = true;  // Start the timer
         }
+
+        private void UpdateMouse(object? sender, ElapsedEventArgs e)
+        {
+            var col = Database.GetCollection<MouseData>("mouse");
+            var jk = col.Query().ToList();
+            if (col.Query().Count() == 0)
+            {
+                col.Insert(new MouseData { LastMouse = lastMouseMoveTime.ToString("dd-MM-yyyy HH:mm:ss") });
+            }
+            else
+            {
+                var prev = col.Query().First();
+                prev.LastMouse = lastMouseMoveTime.ToString("dd-MM-yyyy HH:mm:ss");
+                col.Update(prev);
+            }
+        }
+
         private void OnChanged(object source, FileSystemEventArgs e)
         {
             Thread.Sleep(200);
@@ -131,12 +154,12 @@ namespace SysTryApp
 
             // Handle double-click on tray icon
             trayIcon.DoubleClick += TrayIcon_DoubleClick;
-        }       
+        }
 
         private async void ProcessCommandAsync(string command)
         {
-            if(string.IsNullOrEmpty(command)) return;
-            if (command.Split('!')[0] == "SERVER") return;            
+            if (string.IsNullOrEmpty(command)) return;
+            if (command.Split('!')[0] == "SERVER") return;
             //trayIcon.ShowBalloonTip(3000, "Received", $"Command: {command}", ToolTipIcon.Info);
             if (command.Split('!')[1] == "getScreenshot")
             {
@@ -185,7 +208,7 @@ namespace SysTryApp
                 }
                 string base64Str = Convert.ToBase64String(data);
             }
-            else if(command.Split('!')[1] == "getLastMouseMoved")
+            else if (command.Split('!')[1] == "getLastMouseMoved")
             {
                 //messageService.SendMessage("STR!mouse!" + lastMouseMoveTime.ToString("dd-MM-yyyy HH:mm:ss"));
             }
@@ -305,7 +328,7 @@ namespace SysTryApp
         {
             var pass = Database.GetCollection<Setting>("setting");
             pass.DeleteAll();
-            pass.Insert(new Setting { Password = textBox1.Text});
+            pass.Insert(new Setting { Password = textBox1.Text });
         }
 
         private void TrackMousePosition()
@@ -332,6 +355,7 @@ namespace SysTryApp
     }
     public class Constants
     {
+        public static string DataPath { get; set; } = "D:\\Db\\";
         public static string FileWatcher { get; set; } = "D:\\Db\\";
     }
 }
